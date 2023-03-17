@@ -1,0 +1,33 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      docker: 20
+      java: corretto17
+  pre_build:
+    commands:
+        - echo Logging in to Amazon ECR...
+        - aws --version
+        - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 701706116775.dkr.ecr.ap-south-1.amazonaws.com
+        - REPOSITORY_URI=701706116775.dkr.ecr.ap-south-1.amazonaws.com/authorization-service-repo-tanmoy
+        - echo MASTER@30031999 | docker login --username tanmoydebnath98 --password-stdin
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - mvn -f authorization-microservice/pom.xml clean install -DskipTests=true
+      - echo Building the docker image
+      - docker build -t authorization-service --file authorization-microservice/Dockerfile .
+      - docker tag authorization-service 701706116775.dkr.ecr.ap-south-1.amazonaws.com/authorization-service-repo-tanmoy:authorization-service
+  post_build:
+    commands:
+        - echo Build completed on `date`
+        - echo Pushing the Docker images...
+        - docker push 701706116775.dkr.ecr.ap-south-1.amazonaws.com/authorization-service-repo-tanmoy:authorization-service
+        - echo Writing image definitions file...
+        - printf '[{"name":"authorization-microservice","imageUri":"%s"}]' 701706116775.dkr.ecr.ap-south-1.amazonaws.com/authorization-service-repo-tanmoy:authorization-service > imagedefinitions.json
+
+artifacts:
+  files:
+  - imagedefinitions.json
